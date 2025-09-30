@@ -1,0 +1,1388 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Muscle Recovery Tracker</title>
+  <style>
+    :root{--bg:#0b0d12;--card:#141823;--muted:#8a94a7;--text:#e7ecf3;--accent:#5fd4a3;--warn:#ffd166;--bad:#ff6b6b;--good:#5fd4a3;--track:#1a2233}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0d12,#0e1118);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial}
+    h1{font-size:1.4rem;margin:0 0 .5rem}
+    .container{max-width:1250px;margin:24px auto;padding:16px}
+
+    /* TWO-COLUMN LAYOUT (fix: body map to the right) */
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:12px}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}}
+
+    .left-col{display:flex;flex-direction:column;gap:12px}
+    .right-col{display:flex;flex-direction:column;gap:12px}
+
+    .card{background:var(--card);border:1px solid #252b38;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    label{display:block;font-size:.9rem;color:var(--muted);margin:.25rem 0}
+    input,select,button,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #2c3342;background:#0f1320;color:var(--text)}
+    input[type="datetime-local"]{padding:8px 10px}
+    button{cursor:pointer;background:#1a2233}
+    button.primary{background:var(--accent);color:#0c121b;border:0;font-weight:700}
+    .row{display:flex;gap:8px}
+    .row>*{flex:1}
+    .row .stack-top{margin-top:6px}
+    .settings-row{flex-wrap:wrap}
+    .settings-row>div{min-width:160px}
+    .label-with-help{display:flex;align-items:center;gap:6px}
+    .inline-help-btn{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:1px solid #2c3342;background:#1a2233;color:var(--muted);font-size:.75rem;padding:0;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+    .inline-help-btn:hover{background:#222b3f;color:var(--text)}
+    .inline-help-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .help-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px;z-index:1000}
+    .help-modal.show{display:flex}
+    .help-modal::before{content:"";position:absolute;inset:0;background:rgba(11,13,18,.72);backdrop-filter:blur(2px)}
+    .help-modal-card{position:relative;background:#0f1320;border:1px solid #273148;border-radius:14px;padding:20px;max-width:360px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.35);color:var(--text);z-index:1001}
+    .help-modal-card h4{margin:0 0 8px;font-size:1.05rem}
+    .help-modal-card p{margin:0;font-size:.9rem;color:var(--muted)}
+    .help-modal-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:#1a2233;border:1px solid #2c3342;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;cursor:pointer}
+    .help-modal-close:hover{background:#222b3f;color:var(--text)}
+    .help-modal-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .toast-container{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;z-index:1100;pointer-events:none}
+    .toast{background:rgba(15,19,32,.92);border:1px solid #273148;border-radius:12px;padding:12px 16px;min-width:240px;max-width:320px;color:var(--text);box-shadow:0 12px 28px rgba(0,0,0,.35);opacity:0;transform:translateY(12px);transition:opacity .24s ease, transform .24s ease;pointer-events:auto}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.success{border-color:rgba(95,212,163,.55)}
+    .toast strong{display:block;font-size:.95rem;margin-bottom:2px}
+    .toast span{display:block;font-size:.85rem;color:var(--muted)}
+    .toast-actions{display:flex;gap:8px;margin-top:10px}
+    .toast-actions button{background:var(--accent);color:#0c121b;border:0;border-radius:8px;padding:6px 12px;font-size:.8rem;font-weight:600;cursor:pointer}
+    .toast-actions button:hover{background:#72deb0}
+    .toast-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .muted{color:var(--muted);font-size:.9rem}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.85rem}
+    .pill.good{background:rgba(95,212,163,.15);color:var(--good)}
+    .pill.warn{background:rgba(255,209,102,.15);color:var(--warn)}
+    .pill.bad{background:rgba(255,107,107,.15);color:var(--bad)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #242a39;text-align:left}
+
+    /* Readiness bar (fix coloring bug) */
+    .bar{height:10px;border-radius:6px;background:var(--track);position:relative;overflow:hidden}
+    .bar>span{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:6px}
+
+    .flex{display:flex;align-items:center;gap:10px}
+    .right{margin-left:auto}
+    .tag{background:#0f1524;border:1px solid #273148;padding:2px 8px;border-radius:999px;font-size:.8rem;color:#b6c2d0}
+    .small{font-size:.85rem}
+
+    /* Body map */
+    .map-sections{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:980px){.map-sections{grid-template-columns:1fr}}
+    svg{width:100%;height:auto;background:#0f1320;border:1px solid #273148;border-radius:16px}
+    .region{cursor:pointer;transition:opacity .15s ease,transform .1s ease,fill .25s ease,filter .25s ease}
+    .region:hover{opacity:.9;transform:translateY(-1px)}
+
+    .legend{display:flex;gap:8px;align-items:center}
+    .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+
+    @media(max-width:600px){
+      body{font-size:15px}
+      .container{padding:12px;margin:12px auto}
+      .card{padding:12px 12px 14px}
+      h1{font-size:1.2rem}
+      .row{flex-wrap:wrap}
+      .row>*{flex:1 1 100%}
+      .settings-row>div{min-width:140px}
+      .map-controls{flex-direction:column;align-items:flex-start;gap:6px}
+      .map-controls .legend{flex-wrap:wrap}
+      .table-wrap table{width:100%}
+      th,td{padding:8px}
+      .map-wrapper .map-swap{bottom:12px;left:12px}
+      .stack-table thead{display:none}
+      .stack-table tbody tr{display:block;padding:10px 0;border-bottom:1px solid #242a39}
+      .stack-table tbody tr td{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border:0}
+      .stack-table tbody tr td::before{content:attr(data-label);font-weight:600;color:var(--muted)}
+      .stack-table tbody tr td:last-child{padding-bottom:0}
+      .stack-table tbody tr td:first-child{padding-top:0}
+      .table-wrap{overflow-x:visible}
+            .dash-score-value{font-size:1.8rem}
+      .dash-meta{grid-template-columns:1fr}
+      .small-row>div:last-child{flex:1 1 100%}
+      .small-row button{width:100%}
+      .control-inline{width:100%;justify-content:flex-start}
+      .control-inline button{width:100%}
+      .dash-history{padding:10px 12px}
+      .hist-list li{padding:8px 10px}
+    }
+    .map-wrapper{position:relative}
+    .map-wrapper > svg{display:none}
+    .map-wrapper > svg.active{display:block}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+    .table-wrap table{width:100%;min-width:0}
+    .map-controls{display:flex;align-items:center;gap:8px}
+    .icon-btn{background:#1a2233;border:1px solid #273148;color:var(--text);padding:8px;border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s ease,transform .1s ease}
+    .icon-btn:hover{background:#222b3f;transform:translateY(-1px)}
+    .icon-btn svg{width:18px;height:18px;fill:currentColor;transition:transform .2s ease}
+    .icon-btn[data-side="back"] svg{transform:scaleX(-1)}
+    .map-wrapper .map-swap{position:absolute;bottom:16px;left:16px;box-shadow:0 6px 16px rgba(0,0,0,.35);z-index:5}
+    .dashboard{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+    .dashboard .row{margin:0}
+    .small-row{align-items:flex-end}
+    .small-row>div:last-child{flex:0 0 auto}
+    .small-row button{width:auto;padding:10px 16px}
+    .control-inline{display:flex;align-items:flex-end}
+    .control-inline button{width:auto;padding:10px 16px}
+    .control-inline.control-fill{flex:1}
+    .control-inline.control-fill button{width:100%}
+    .dash-metrics{display:flex;flex-direction:column;gap:16px}
+    .dash-score{background:#0f1524;border:1px solid #273148;border-radius:14px;padding:12px 20px;width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+    .dash-score-value{font-size:2.2rem;font-weight:700;color:var(--accent)}
+    .dash-pill{font-size:.95rem}
+    .dash-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;color:var(--muted)}
+    .dash-meta strong{color:var(--text);font-weight:600;margin-right:4px}
+    .dash-history{background:#0f1320;border:1px solid #273148;border-radius:14px;padding:12px 14px}
+    .dash-recent{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+    .dash-recent li{background:#0b0f1c;border:1px solid #1f2739;border-radius:10px;padding:8px 10px;font-size:.9rem;color:var(--text)}
+    .dash-recent li .muted{font-size:.8rem}
+    .dash-recent-date{font-weight:600}
+    .dash-recent-empty{color:var(--muted);text-align:center}
+    .history{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+    .hist-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+    .hist-list li{background:#0b0f1c;border:1px solid #1f2739;border-radius:10px;padding:10px 12px;color:var(--text);display:flex;flex-direction:column;gap:4px}
+    .hist-list li header{display:flex;justify-content:space-between;align-items:flex-start;font-weight:600;gap:8px}
+    .hist-list li .muted{font-size:.85rem}
+    .hist-muscle-group{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:4px}
+    .hist-time{white-space:nowrap}
+    .hist-remove-btn{background:transparent;border:1px solid #273148;color:var(--muted);padding:3px 8px;border-radius:7px;font-size:.7rem;font-weight:600;cursor:pointer;transition:background .2s ease,color .2s ease,border-color .2s ease;align-self:flex-end;margin-top:4px}
+    .hist-remove-btn:hover{color:var(--bad);border-color:rgba(255,107,107,.6);background:rgba(255,107,107,.08)}
+    .hist-remove-btn:focus-visible{outline:2px solid var(--bad);outline-offset:2px}
+    .hist-empty{color:var(--muted);text-align:center;font-size:.9rem}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Muscle Recovery Tracker</h1>
+    <p class="muted">Per‑muscle recovery times, a clickable body map, and fatigue tuned by how many sets your muscles typically need for hypertrophy.
+    </p>
+
+    <div class="grid">
+      <!-- LEFT COLUMN -->
+      <div class="left-col">
+        <div class="card">
+          <h3 style="margin-top:0">Log a Session</h3>
+          <div class="row">
+            <div>
+              <label>Date & time</label>
+              <input type="datetime-local" id="dt"/>
+            </div>
+            <div>
+              <label>Muscle</label>
+              <select id="muscleSelect"></select>
+            </div>
+            <div>
+              <label>Sets</label>
+              <input type="number" id="sets" min="1" max="20" value="3"/>
+            </div>
+          </div>
+          <div class="row">
+            <button class="primary stack-top" onclick="addSession()">Add Session</button>
+            <button onclick="exportData()">Export JSON</button>
+            <input type="file" id="importFile" accept="application/json" style="display:none"/>
+            <button onclick="document.getElementById('importFile').click()">Import</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Maintenance</h3>
+          <p class="muted small">Fix a mistake by clearing sessions for a single muscle or wipe everything.</p>
+          <div class="row">
+            <div>
+              <label>Muscle to reset</label>
+              <select id="resetMuscleSelect"></select>
+            </div>
+            <div class="control-inline control-fill">
+              <button id="resetMuscleBtn" onclick="resetMuscleData()">Reset Muscle</button>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button onclick="resetAll()">Reset All Data</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex"><h3 style="margin:0">Per‑muscle Recovery & Stimulus</h3><span class="right muted small">Tune to your body: recovery time (h) and sets to "red".</span></div>
+          <div class="row settings-row">
+            <div>
+              <label>Muscle</label>
+              <select id="settingsMuscle"></select>
+            </div>
+            <div>
+              <div class="label-with-help">
+                <label for="settingsHalfLife">Recovery Time (h)</label>
+                <button type="button" class="inline-help-btn" id="halfLifeInfoBtn" aria-label="What is recovery time?" aria-expanded="false" aria-controls="halfLifeModal">?</button>
+              </div>
+              <input type="number" id="settingsHalfLife" min="6" max="240"/>
+            </div>
+            <div>
+              <label>Sets→Red</label>
+              <input type="number" id="settingsSetsToRed" min="2" max="40"/>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="primary" onclick="saveSettings()">Save Recovery Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="right-col">
+        <div class="card" id="mapCard">
+          <div class="flex" style="gap:12px">
+            <h3 style="margin:0">Body Map</h3>
+            <div class="map-controls right">
+              <div class="legend">
+                <span class="dot" style="background:var(--good)"></span><span class="small">Ready ≥80%</span>
+                <span class="dot" style="background:var(--warn)"></span><span class="small">Moderate 60–79%</span>
+                <span class="dot" style="background:var(--bad)"></span><span class="small">Fatigued <60%</span>
+              </div>
+            </div>
+          </div>
+          <div class="map-wrapper">
+            <svg id="mapFront" viewBox="0 0 360 700"></svg>
+            <svg id="mapBack" viewBox="0 0 360 700"></svg>
+            <button class="icon-btn map-swap" id="swapMap" type="button" aria-label="Flip body map">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h11l-3.5-3.5 1.4-1.4L19.8 8l-6.9 6.9-1.4-1.4L15 10H4V7zm16 10H9l3.5 3.5-1.4 1.4L4.2 16l6.9-6.9 1.4 1.4L9 14h11v3z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="card" id="dashCard">
+          <div class="flex">
+            <h3 style="margin:0">Readiness Dashboard</h3>
+            <span class="right muted small">Pick a muscle to inspect detailed readiness.</span>
+          </div>
+          <div class="dashboard">
+            <div class="row small-row">
+              <div>
+                <label>Muscle</label>
+                <select id="dashMuscleSelect"></select>
+              </div>
+              <div class="control-inline">
+                <button id="dashFocusBtn" type="button">Focus on Body Map</button>
+              </div>
+            </div>
+            <div class="dash-metrics">
+              <div class="dash-score">
+                <div class="dash-score-value" id="dashReadiness">--%</div>
+                <div class="muted small">Readiness</div>
+              </div>
+              </div>
+            <div class="dash-meta small">
+              <div><strong>Last trained:</strong> <span id="dashLast">—</span></div>
+              <div><strong>Total sessions logged:</strong> <span id="dashCount">0</span></div>
+              <div><strong>Recovery Time (h):</strong> <span id="dashHalfLife">--</span></div>
+              <div><strong>Sets→Red:</strong> <span id="dashSets">--</span></div>
+            </div>
+            <div class="dash-history">
+              <h4 class="muted small" style="margin:0px 0 4px">Recent Sessions</h4>
+              <ul id="dashRecent" class="dash-recent"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="flex"><h3 style="margin:0">History</h3><span class="tag" id="count"></span></div>
+          <div class="history">
+            <div class="row small-row">
+              <div>
+                <label>Date</label>
+                <select id="histDateSelect"></select>
+              </div>
+              <div class="control-inline">
+                <button id="histClearBtn" type="button">Clear Date Sessions</button>
+              </div>
+            </div>
+            <ul id="histList" class="hist-list"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="halfLifeModal" class="help-modal" role="dialog" aria-modal="true" aria-labelledby="halfLifeModalTitle" aria-hidden="true" tabindex="-1">
+    <div class="help-modal-card" id="halfLifeModalCard" tabindex="-1">
+      <button type="button" class="help-modal-close" id="halfLifeModalClose" aria-label="Close recovery time info">&times;</button>
+      <h4 id="halfLifeModalTitle">What is Recovery Time?</h4>
+      <p>Recovery time is the half-life of your logged fatigue: each span cuts the remaining fatigue in half. After about three cycles only about 12% remains, which usually feels ready for training.</p>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_MUSCLES = ['Chest','Back','Quads','Hamstrings','Glutes','Shoulders','Biceps','Triceps','Calves','Core','Trapezius','Forearms','Adductors','Abductors','Lower Back','Neck'];
+    // Half-life defaults (hours) – heuristic starting points
+    const DEFAULT_HALF_LIVES = {
+      'Chest':72,'Back':72,'Lower Back':72,'Quads':72,'Hamstrings':72,'Glutes':72,
+      'Shoulders':48,'Biceps':36,'Triceps':36,'Calves':72,'Core':48,'Trapezius':48,
+      'Forearms':36,'Adductors':72,'Abductors':72,'Neck':36
+    };
+    // Sets→Red defaults – how many sets (logged at once) would max fatigue (turn bar red) if no prior fatigue.
+    const DEFAULT_SETS_TO_RED = {
+      'Chest':12,'Back':14,'Lower Back':10,'Quads':14,'Hamstrings':12,'Glutes':12,
+      'Shoulders':10,'Biceps':8,'Triceps':8,'Calves':12,'Core':10,'Trapezius':10,
+      'Forearms':8,'Adductors':10,'Abductors':10,'Neck':6
+    };
+
+    let editingState = { halfLives: {}, setsToRed: {} };
+
+
+    const store = {
+      load(){
+        const s = JSON.parse(localStorage.getItem('mrt_store')||'{}');
+        this.muscles = s.muscles || DEFAULT_MUSCLES;
+        this.defaultSets = s.defaultSets || 3;
+        this.sessions = s.sessions || [];
+        this.halfLives = s.halfLives || {...DEFAULT_HALF_LIVES};
+        this.setsToRed = s.setsToRed || {...DEFAULT_SETS_TO_RED};
+        for(const m of this.muscles){
+          if(!this.halfLives[m]) this.halfLives[m] = DEFAULT_HALF_LIVES[m] || 48;
+          if(!this.setsToRed[m]) this.setsToRed[m] = DEFAULT_SETS_TO_RED[m] || 10;
+        }
+        primeEditingState();
+      },
+      save(){
+        localStorage.setItem('mrt_store', JSON.stringify({muscles:this.muscles, defaultSets:this.defaultSets, sessions:this.sessions, halfLives:this.halfLives, setsToRed:this.setsToRed}));
+      }
+    }
+
+    function saveSettings(){
+      syncEditingStateWithMuscles();
+      for(const m of store.muscles){
+        const fallbackHL = store.halfLives[m] ?? DEFAULT_HALF_LIVES[m] ?? 48;
+        const fallbackSR = store.setsToRed[m] ?? DEFAULT_SETS_TO_RED[m] ?? 10;
+        const hlRaw = editingState.halfLives[m];
+        const srRaw = editingState.setsToRed[m];
+        const hlNum = Number(hlRaw);
+        const srNum = Number(srRaw);
+        const hlValid = typeof hlRaw === 'string'? hlRaw.trim() !== '' && Number.isFinite(hlNum) && hlNum > 0 : Number.isFinite(hlNum) && hlNum > 0;
+        const srValid = typeof srRaw === 'string'? srRaw.trim() !== '' && Number.isFinite(srNum) && srNum > 0 : Number.isFinite(srNum) && srNum > 0;
+        store.halfLives[m] = clamp(hlValid ? hlNum : fallbackHL,6,240);
+        store.setsToRed[m] = clamp(srValid ? srNum : fallbackSR,2,40);
+        editingState.halfLives[m] = String(store.halfLives[m]);
+        editingState.setsToRed[m] = String(store.setsToRed[m]);
+      }
+      const keep = new Set(store.muscles);
+      Object.keys(store.halfLives).forEach(m=>{ if(!keep.has(m)) delete store.halfLives[m]; });
+      Object.keys(store.setsToRed).forEach(m=>{ if(!keep.has(m)) delete store.setsToRed[m]; });
+      Object.keys(editingState.halfLives).forEach(m=>{ if(!keep.has(m)) delete editingState.halfLives[m]; });
+      Object.keys(editingState.setsToRed).forEach(m=>{ if(!keep.has(m)) delete editingState.setsToRed[m]; });
+      const activeMuscle = document.getElementById('settingsMuscle').value;
+      store.save();
+      primeEditingState();
+      hydrate(activeMuscle);
+    }
+    const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+
+    const TOAST_LIFETIME = 2600;
+    function showToast({title='Session logged', message='', tone='success', action=null} = {}){
+      const container = document.getElementById('toastContainer');
+      if(!container) return {dismiss: ()=>{}};
+      while(container.children.length >= 4){
+        container.removeChild(container.firstElementChild);
+      }
+      const toast = document.createElement('div');
+      toast.className = `toast ${tone}`.trim();
+      toast.setAttribute('role','status');
+      if(title){
+        const heading = document.createElement('strong');
+        heading.textContent = title;
+        toast.appendChild(heading);
+      }
+      if(message){
+        const body = document.createElement('span');
+        body.textContent = message;
+        toast.appendChild(body);
+      }
+      let removed = false;
+      const closeToast = ()=>{
+        if(removed) return;
+        removed = true;
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', ()=>toast.remove(), {once:true});
+      };
+      let timeoutId = null;
+      const clearTimer = ()=>{
+        if(timeoutId){
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      };
+      const startTimer = ()=>{
+        if(removed) return;
+        clearTimer();
+        timeoutId = window.setTimeout(()=>{
+          timeoutId = null;
+          closeToast();
+        }, TOAST_LIFETIME);
+      };
+      if(action && action.label && typeof action.onClick === 'function'){
+        const actionsWrap = document.createElement('div');
+        actionsWrap.className = 'toast-actions';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = action.label;
+        btn.addEventListener('click', (event)=>{
+          event.preventDefault();
+          event.stopPropagation();
+          clearTimer();
+          try{
+            action.onClick({dismiss: closeToast});
+          } catch(err){
+            console.error(err);
+          }
+          closeToast();
+        });
+        actionsWrap.appendChild(btn);
+        toast.appendChild(actionsWrap);
+      }
+      container.appendChild(toast);
+      const raf = window.requestAnimationFrame || (cb=>setTimeout(cb,0));
+      raf(()=>toast.classList.add('show'));
+      startTimer();
+      toast.addEventListener('mouseenter', clearTimer);
+      toast.addEventListener('mouseleave', startTimer);
+      return {dismiss: closeToast};
+    }
+
+    function addSession(){
+      const dt = document.getElementById('dt').value;
+      const m = document.getElementById('muscleSelect').value;
+      const setsInput = document.getElementById('sets').value;
+      const sets = Number(setsInput)||store.defaultSets;
+      if(!dt||!m){alert('Pick a date/time and muscle');return}
+      const parsed = new Date(dt);
+      const validDate = !Number.isNaN(parsed.getTime());
+      const isoTimestamp = validDate ? parsed.toISOString() : new Date().toISOString();
+      const setsLabel = `${sets} set${sets===1?'':'s'}`;
+      const friendlyTime = validDate ? parsed.toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '';
+      const message = friendlyTime ? `${setsLabel} for ${m} @ ${friendlyTime}` : `${setsLabel} for ${m}`;
+      const newEntry = {ts: isoTimestamp, muscle:m, sets};
+      store.sessions.push(newEntry);
+      store.save();
+      showToast({
+        title:'Session logged',
+        message,
+        tone:'success',
+        action:{
+          label:'Undo',
+          onClick: ({dismiss})=>{
+            const idx = store.sessions.indexOf(newEntry);
+            if(idx !== -1){
+              store.sessions.splice(idx,1);
+              store.save();
+              hydrate(m);
+              showToast({title:'Session removed', message:`Undid ${setsLabel} for ${m}`, tone:'success'});
+            }
+            if(typeof dismiss === 'function'){
+              dismiss();
+            }
+          }
+        }
+      });
+      hydrate(m);
+    }
+
+    function exportData(){
+      const blob = new Blob([JSON.stringify({muscles:store.muscles, defaultSets:store.defaultSets, sessions:store.sessions, halfLives:store.halfLives, setsToRed:store.setsToRed}, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'muscle-recovery-tracker.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('importFile').addEventListener('change', (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{ const data = JSON.parse(reader.result); Object.assign(store, data); store.save(); hydrate(); }
+        catch(err){ alert('Invalid file'); }
+      };
+      reader.readAsText(file);
+    })
+
+    function resetAll(){
+      if(!confirm('Delete all data?')) return;
+      localStorage.removeItem('mrt_store');
+      store.load();
+      hydrate();
+    }
+
+    function resetMuscleData(){
+      const sel = document.getElementById('resetMuscleSelect');
+      const muscle = sel ? sel.value : '';
+      if(!muscle){ alert('Pick a muscle to reset'); return; }
+      if(!confirm(`Remove all sessions for ${muscle}?`)) return;
+      const before = store.sessions.length;
+      store.sessions = store.sessions.filter(s => s.muscle !== muscle);
+      const removed = before - store.sessions.length;
+      if(removed <= 0){
+        alert('No sessions to remove for that muscle.');
+        return;
+      }
+      store.save();
+      hydrate(muscle);
+      const resetSel = document.getElementById('resetMuscleSelect');
+      if(resetSel && store.muscles.includes(muscle)) resetSel.value = muscle;
+      alert(`Deleted ${removed} session${removed === 1 ? '' : 's'} for ${muscle}.`);
+    }
+
+    function fatigueModel(sessions, muscle){
+      // Each set contributes: (100 / setsToRed[muscle]) fatigue units.
+      // Exponential decay by half-life per muscle.
+      const now = Date.now();
+      const hlHours = store.halfLives[muscle] || 48;
+      const hl = hlHours * 3600 * 1000;
+      let fatigue = 0; let last=null;
+      const perSet = 100 / (store.setsToRed[muscle] || 10);
+      for(const s of sessions){
+        if(s.muscle!==muscle) continue;
+        const t = new Date(s.ts).getTime();
+        last = !last || t>last ? t : last;
+        const sets = Number(s.sets)||store.defaultSets;
+        const base = sets * perSet;
+        const decay = Math.pow(0.5, (now - t)/hl);
+        fatigue += base * decay;
+      }
+      fatigue = Math.min(100, fatigue);
+      const readiness = Math.max(0, Math.min(100, 100 - fatigue));
+      return {readiness, fatigue, last};
+    }
+
+    function statusPill(r){
+      let cls='good', txt='Ready';
+      if(r<60){cls='bad';txt='Fatigued'} else if(r<80){cls='warn';txt='Moderate'}
+      return `<span class="pill ${cls}">${txt} • ${r.toFixed(0)}%</span>`
+    }
+    function colorForReadiness(r){
+      if(r<60) return getCSS('--bad');
+      if(r<80) return getCSS('--warn');
+      return getCSS('--good');
+    }
+    function getCSS(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+
+function primeEditingState(){
+  editingState = { halfLives: {}, setsToRed: {} };
+  Object.keys(store.halfLives).forEach(m=>{ editingState.halfLives[m] = String(store.halfLives[m]); });
+  Object.keys(store.setsToRed).forEach(m=>{ editingState.setsToRed[m] = String(store.setsToRed[m]); });
+}
+
+function ensureEditingDefaultsForMuscle(muscle){
+  if(!muscle) return;
+  if(!(muscle in editingState.halfLives)){
+    const hl = store.halfLives[muscle] ?? DEFAULT_HALF_LIVES[muscle] ?? 48;
+    editingState.halfLives[muscle] = String(hl);
+  }
+  if(!(muscle in editingState.setsToRed)){
+    const sr = store.setsToRed[muscle] ?? DEFAULT_SETS_TO_RED[muscle] ?? 10;
+    editingState.setsToRed[muscle] = String(sr);
+  }
+}
+
+function syncEditingStateWithMuscles(){
+  const muscleSet = new Set(store.muscles);
+  muscleSet.forEach(m => ensureEditingDefaultsForMuscle(m));
+  Object.keys(editingState.halfLives).forEach(m=>{ if(!muscleSet.has(m)) delete editingState.halfLives[m]; });
+  Object.keys(editingState.setsToRed).forEach(m=>{ if(!muscleSet.has(m)) delete editingState.setsToRed[m]; });
+}
+
+function setRecoveryInputs(muscle){
+  const hlInput = document.getElementById('settingsHalfLife');
+  const srInput = document.getElementById('settingsSetsToRed');
+  if(!hlInput || !srInput) return;
+  if(!muscle){
+    hlInput.value = '';
+    srInput.value = '';
+    hlInput.disabled = true;
+    srInput.disabled = true;
+    return;
+  }
+  ensureEditingDefaultsForMuscle(muscle);
+  hlInput.disabled = false;
+  srInput.disabled = false;
+  hlInput.value = editingState.halfLives[muscle];
+  srInput.value = editingState.setsToRed[muscle];
+}
+
+function buildRecoveryForm(preferredMuscle){
+  const select = document.getElementById('settingsMuscle');
+  if(!select) return;
+  const current = preferredMuscle || select.value;
+  select.innerHTML = store.muscles.map(m=>`<option value='${m}'>${m}</option>`).join('');
+  const active = store.muscles.includes(current) ? current : (store.muscles[0] || '');
+  if(active){
+    select.disabled = false;
+    select.value = active;
+  }else{
+    select.disabled = true;
+    select.value = '';
+  }
+  setRecoveryInputs(active);
+}
+
+    // ===== Stylized body map =====
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const FRONT_MAP = [
+      {
+        muscle:'Chest',
+        shapes:[
+          {label:'Left Chest', points:'122,133,130,133,130,100,107,93,96,97,79,123,88,125,97,135,105,136,115,134'},
+          {label:'Chest', points:'132,103,132,133,143,134,151,135,157,136,163,135,169,132,173,126,183,123,177,114,171,104,164,96,156,93,145,95,137,98,134,100,133,100'}
+        ]
+      },
+      {
+        muscle:'Core',
+        shapes:[
+          {points:'130,137,121,136,114,137,106,138,100,141,100,147,101,152,105,157,110,155,115,152,120,149,125,148,130,147'},
+          {points:'131,136,143,135,155,137,161,140,162,145,161,152,156,157,148,153,139,148,132,146'},
+          {points:'130,149,121,151,114,155,109,160,112,169,130,167'},
+          {points:'132,149,132,167,141,167,148,169,152,166,152,159,145,153'},
+          {points:'130,168,130,193,119,193,114,186,113,176,121,170,117,170'},
+          {points:'139,193,132,193,132,181,132,169,140,169,145,171,148,176,149,181,148,187,144,192,139,193'},
+          {points:'116,195,130,195,130,249,126,247,121,239,117,228,115,219'},
+          {points:'132,195,143,195,145,200,146,206,147,212,146,218,145,224,143,231,141,237,139,243,132,250'},
+          {points:'97,158,102,161,106,164,109,170,110,176,111,184,104,180,100,178'},
+          {points:'98,179,105,184,109,188,110,194,109,202,102,195,97,189'},
+          {points:'95,192,100,197,104,201,107,206,109,212,110,218,110,226,105,224,99,217,95,210,94,202'},
+          {points:'166,159,160,161,154,168,153,174,152,180,153,185,158,180,164,177,164,170'},
+          {points:'165,180,158,184,153,188,153,195,154,204,158,198,163,193,167,189,166,185'},
+          {points:'166,193,160,199,155,205,152,213,151,221,152,227,158,224,163,218,167,212,169,205,168,199'}
+        ]
+      },
+      {
+        muscle:'Biceps',
+        shapes:[
+          {label:'Left Biceps', points:'82,127,83,131,81,126,73,131,66,135,63,141,59,148,57,155,57,162,58,168,61,172,66,171,71,168,75,162,79,156,81,148,84,132,83,131'},
+          {label:'Right Biceps', points:'178,128,184,126,188,129,192,132,196,135,199,139,202,144,203,150,204,155,206,161,205,167,202,172,197,173,191,168,185,161,181,153'}
+        ]
+      },
+      {
+        muscle:'Forearms',
+        shapes:[
+          {label:'Right Forearm', points:'191,172,192,179,193,184,195,189,198,193,201,197,205,201,209,205,213,210,218,215,222,220,228,227,234,224,229,220,208,194,206,188,205,183,203,177,199,177,203,177'},
+          {label:'Right Forearm', points:'219,178,210,169,205,173,206,180,207,188,212,198,218,205,229,216,223,193,222,185'},
+          {label:'Left Forearm', points:'52,168,56,174,55,183,53,190,50,198,46,204,41,210,36,214,31,217,39,194,39,184'},
+          {label:'Left Forearm', points:'58,176,64,175,70,173,71,180,69,187,65,193,60,198,55,204,50,209,45,216,39,222,37,227,30,224,56,196'}
+        ]
+      },
+      {
+        muscle:'Shoulders',
+        shapes:[
+          {label:'Left Shoulder', points:'102,92,91,88,84,88,78,93,72,98,68,103,67,109,66,115,64,120,64,126,67,131,75,123,75,126,89,103,95,97,97,95,97,92,96,91,94,92'},
+          {label:'Right Shoulder', points:'176,89,183,92,188,95,191,99,193,105,195,110,196,116,197,121,196,131,189,127,183,120,178,112,174,105,169,99,162,92,168,89'}
+        ]
+      },
+      {
+        muscle:'Trapezius',
+        shapes:[
+          {label:'Left Trapezius', points:'116,74,105,81,94,87,99,88,105,90,110,92,116,92,119,92,118,84'},
+          {label:'Right Trapezius', points:'146,74,145,80,143,85,141,92,147,93,154,91,162,89,169,85,158,81'}
+        ]
+      },
+      {
+        muscle:'Neck',
+        shapes:[
+          {label:'Left Neck', points:'118,71,119,79,121,86,124,92,130,99,124,76'},
+          {label:'Right Neck', points:'144,70,144,78,138,92,131,99,140,76'}
+        ]
+      },
+      {
+        muscle:'Quads',
+        shapes:[
+          {label:'Left Quad Outer', points:'105,229,109,235,110,241,111,246,112,252,112,260,112,290,109,308,106,317,102,322,97,319,93,308,91,292,92,272,95,251,100,237'},
+          {label:'Left Quad Inner', points:'115,286,118,294,120,305,120,313,120,322,120,329,119,336,118,343,114,350,109,351,104,347,101,341,101,333,107,323,112,311'},
+          {label:'Left Quad Upper', points:'89,265,85,272,83,280,82,288,82,296,82,303,83,310,83,316,85,324,87,332,94,339,97,334,96,326,93,319,89,304,89,289,90,276'},
+          {label:'Right Quad Outer', points:'157,229,162,236,165,242,166,249,167,254,168,261,169,267,170,276,170,284,170,292,170,300,169,308,167,316,164,322,160,322,155,316,152,303,150,284,149,259,152,239'},
+          {label:'Right Quad Inner', points:'146,286,148,293,148,301,149,307,150,313,153,318,155,324,158,328,161,333,162,339,160,344,156,349,150,351,146,346,143,337,142,314'},
+          {label:'Right Quad Upper', points:'172,265,176,270,178,277,179,284,179,290,180,297,180,306,179,315,178,323,175,332,172,337,167,340,165,331,168,320,172,309,173,299,174,290'}
+        ]
+      },
+      {
+        muscle:'Abductors',
+        shapes:[
+          {label:'Left Abductors', points:'95,219,99,223,103,227,99,233,97,241,94,248,92,254,90,260,86,264,94,235'},
+          {label:'Right Abductors', points:'166,220,162,225,159,227,164,233,168,245,171,255,176,264'}
+        ]
+      },
+      {
+        muscle:'Adductors',
+        shapes:[
+          {label:'Left Adductors', points:'114,243,118,249,121,253,126,261,126,268,125,277,125,284,124,291,122,298,118,286,115,280,116,265'},
+          {label:'Right Adductors', points:'148,245,147,256,146,263,146,269,146,281,144,287,142,294,141,300,137,283,137,272,136,263'}
+        ]
+      },
+      {
+        muscle:'Calves',
+        shapes:[
+          {label:'Left Calf Outer', points:'86,376,89,382,91,389,94,394,97,398,98,406,99,415,100,423,101,431,101,439,101,445,101,455,102,464,102,474,97,469,91,450,87,440,84,423,82,399,84,386'},
+          {label:'Left Calf Inner', points:'111,382,114,388,115,396,116,402,116,408,116,415,115,421,113,428,111,433,109,418,109,400'},
+          {label:'Right Calf Outer', points:'174,375,177,381,178,387,179,395,179,403,179,410,179,418,178,424,176,431,175,440,171,447,169,454,167,461,165,468,162,474,160,459,161,439,163,421,165,403,167,396,172,388'},
+          {label:'Right Calf Inner', points:'151,382,148,390,146,400,146,408,147,417,148,425,152,433,153,419,153,400,152,394'}
+        ]
+      },
+      {
+        muscle:'Back',
+        shapes:[
+          {label:'Left Lat', points:'88,131,93,135,98,139,99,152,95,157,95,160,95,167,88,155,85,146'},
+          {label:'Right Lat', points:'174,131,169,136,164,140,164,146,164,152,167,156,167,162,166,168,172,159,175,153,177,147,177,140'}
+        ]
+      }
+    ];
+
+const BACK_MAP = [
+  {
+    muscle:'Trapezius',
+    shapes:[
+      {points:'133,64,134,70,134,78,134,87,131,91,128,94,128,97,130,101,133,106,134,179,127,173,121,164,116,155,113,145,112,132,111,121,109,110,104,104,98,101,92,98,104,92,112,88,118,85,124,79,128,73'},
+      {points:'136,63,135,87,142,94,142,96,136,105,136,178,144,172,151,161,155,151,157,144,158,132,159,116,160,110,165,105,171,102,178,97,165,92,156,87,148,82'}
+    ]
+  },
+  {
+    muscle:'Shoulders',
+    shapes:[
+      {points:'101,123,98,125,84,130,78,135,72,141,70,132,69,124,70,116,73,110,77,104,82,101,87,99,92,100,97,103,102,106,106,109,108,113,108,118,104,122,101,123'},
+      {points:'161,113,163,108,168,105,173,102,179,99,184,99,189,102,193,106,197,112,199,118,200,125,200,133,198,140,189,132,181,128,175,126,168,124,162,119'}
+    ]
+  },
+  {
+    muscle:'Back',
+    shapes:[
+      {points:'108,120,110,125,111,132,109,138,102,138,95,137,92,134,89,131,97,128,103,126,104,125'},
+      {points:'160,120,159,136,165,138,173,138,176,136,180,131,166,125'},
+      {points:'88,134,87,151,90,161,93,169,97,176,101,181,104,188,106,198,113,197,118,194,123,190,129,186,134,181,124,173,119,166,115,156,112,146,110,139,102,141,94,139'},
+      {points:'159,140,158,148,155,155,153,161,150,168,144,174,138,179,136,181,145,189,151,193,157,197,162,198,165,190,168,180,173,174,178,163,181,153,182,142,181,135,173,140,167,141'}
+    ]
+  },
+  {
+    muscle:'Lower Back',
+    shapes:[
+      {points:'134,185,127,191,121,196,114,199,108,202,109,211,109,223,116,224,123,227,129,231,134,235'},
+      {points:'136,184,136,235,141,230,147,226,155,224,161,223,161,201,149,196'}
+    ]
+  },
+  {
+    muscle:'Triceps',
+    shapes:[
+      {points:'86,133,85,139,85,145,86,152,87,159,83,166,78,172,74,176,69,179,73,166,73,159,74,151,77,142,80,137'},
+      {points:'76,140,73,150,72,156,72,162,67,166,66,171,65,177,59,181,59,172,60,165,63,156,66,148,72,143,73,141,70,145,72,143,71,144'},
+      {points:'183,160,185,149,185,142,184,133,189,136,194,144,196,151,197,158,198,164,197,169,200,174,202,181,194,174,188,167'},
+      {points:'199,161,198,154,196,146,193,139,204,148,207,154,210,161,211,168,212,175,210,182,206,177,203,168'}
+    ]
+  },
+  {
+    muscle:'Forearms',
+    shapes:[
+      {points:'39,235,35,234,33,233,31,232,34,223,37,217,40,211,41,206,43,199,43,193,48,186,51,180,54,177,56,176,57,185,56,193,54,200,51,208,51,213,47,221'},
+      {points:'75,180,75,186,73,193,69,199,64,205,60,209,53,215,55,205,58,199,64,189'},
+      {points:'194,180,199,183,204,188,208,193,212,199,215,206,217,215,209,210,203,203,196,191'},
+      {points:'219,214,218,206,215,199,214,191,214,182,215,177,220,181,224,186,226,191,228,197,229,202,230,207,232,211,234,217,236,222,239,229,237,233,235,235,232,235'}
+    ]
+  },
+  {
+    muscle:'Core',
+    shapes:[
+      {points:'102,192,104,199,105,205,106,211,107,218,106,223,99,228,99,218,97,212,98,203'},
+      {points:'168,191,169,196,168,191,172,201,173,207,172,214,171,220,170,228,164,224,164,214,165,203,168,191'}
+    ]
+  },
+  {
+    muscle:'Glutes',
+    shapes:[
+      {points:'108,225,116,225,122,228,127,231,132,236,134,243,134,270,128,277,122,280,116,281,109,280,103,276,100,268,99,258,98,238,101,230'},
+      {points:'158,225,164,226,169,232,172,238,171,245,171,269,167,275,162,279,156,281,148,281,141,277,137,271,136,265,136,241,140,234,145,229,151,226'}
+    ]
+  },
+  {
+    muscle:'Hamstrings',
+    shapes:[
+      {points:'97,269,100,273,102,277,97,283,95,290,91,298,89,306,87,317,85,310,85,297,87,286,91,277'},
+      {points:'169,276,172,269,177,274,180,279,183,286,184,294,184,316,182,309,179,300,175,290,173,284,171,280,173,284'},
+      {points:'102,278,108,281,105,292,104,302,103,310,102,318,102,328,103,336,103,349,100,358,97,363,93,369,93,354,91,346,89,338,87,330,88,319,91,306'},
+      {points:'167,278,162,281,164,287,166,292,167,304,167,317,168,334,168,350,171,361,177,369,177,357,178,348,180,339,182,331,182,319,179,306,171,286'},
+      {points:'109,283,117,283,117,291,118,298,119,305,121,312,122,318,126,325,125,343,124,357,122,366,119,377,117,382,113,372,109,365,106,356,104,343,104,319,106,293'},
+      {points:'153,284,160,282,163,291,164,297,165,306,166,313,165,319,166,340,165,353,162,362,158,371,153,384,149,371,146,353,144,327,148,318,151,306,153,295'},
+      {points:'131,279,131,288,130,298,127,321,123,315,121,305,119,294,119,284'},
+      {points:'139,278,145,281,151,282,151,293,150,302,148,310,143,323'}
+    ]
+  },
+  {
+    muscle:'Abductors',
+    shapes:[
+      {points:'96,250,97,265,89,274,91,265'},
+      {points:'174,250,178,259,181,274,173,265'}
+    ]
+  },
+  {
+    muscle:'Calves',
+    shapes:[
+      {points:'104,365,104,381,105,407,107,432,107,441,111,449,115,453,118,444,121,433,121,418,118,398,115,385,111,372'},
+      {points:'101,366,102,401,103,421,105,437,104,444,99,450,93,449,89,441,87,429,86,414,87,398,89,384,95,371'},
+      {points:'165,366,166,373,166,384,163,444,157,452,153,450,151,441,149,429,149,416,155,383,160,373'},
+      {points:'169,366,168,388,167,419,166,429,165,440,168,447,174,449,178,447,181,440,183,431,183,404,182,390,179,378,175,371'},
+      {points:'92,449,96,452,100,468,102,482,102,494,99,499,98,477'},
+      {points:'178,450,175,467,172,480,172,491,170,499,168,486,169,472,173,454'}
+    ]
+  }
+];
+
+
+const MAPS = {
+  front: {
+    regions: FRONT_MAP,
+    padding: { x: 28, y: 36 }
+  },
+  back: {
+    regions: BACK_MAP,
+    padding: { x: 28, y: 36 }
+  }
+};
+
+let MAP_BOUNDS = {};
+let TARGET_MAP_HEIGHT = 1;
+let currentMapSide = 'front';
+
+function computeMapMetrics(){
+  MAP_BOUNDS = {};
+  TARGET_MAP_HEIGHT = 1;
+  Object.entries(MAPS).forEach(([key, cfg])=>{
+    const bounds = getBounds(cfg.regions);
+    MAP_BOUNDS[key] = bounds;
+    if(bounds.height > TARGET_MAP_HEIGHT) TARGET_MAP_HEIGHT = bounds.height;
+  });
+}
+
+computeMapMetrics();
+
+const FRONT_MUSCLE_SET = new Set(FRONT_MAP.map(r=>r.muscle));
+const BACK_MUSCLE_SET = new Set(BACK_MAP.map(r=>r.muscle));
+
+function applyMapSide(){
+  const front = document.getElementById('mapFront');
+  const back = document.getElementById('mapBack');
+  if(front) front.classList.toggle('active', currentMapSide === 'front');
+  if(back) back.classList.toggle('active', currentMapSide === 'back');
+  const btn = document.getElementById('swapMap');
+  if(btn){
+    btn.setAttribute('data-side', currentMapSide);
+    btn.setAttribute('aria-label', currentMapSide === 'front' ? 'Show back body map' : 'Show front body map');
+  }
+}
+
+function setMapSide(side){
+  if(side !== 'front' && side !== 'back') return;
+  currentMapSide = side;
+  applyMapSide();
+}
+
+function renderDashboard(muscle){
+  const readinessEl = document.getElementById('dashReadiness');
+  const lastEl = document.getElementById('dashLast');
+  const countEl = document.getElementById('dashCount');
+  const halfLifeEl = document.getElementById('dashHalfLife');
+  const setsEl = document.getElementById('dashSets');
+  const recentList = document.getElementById('dashRecent');
+  const focusBtn = document.getElementById('dashFocusBtn');
+  if(!readinessEl || !recentList) return;
+  if(!muscle){
+    readinessEl.textContent = '--%';
+    readinessEl.style.color = 'var(--muted)';
+    lastEl.textContent = '—';
+    countEl.textContent = '0';
+    halfLifeEl.textContent = '--';
+    setsEl.textContent = '--';
+    recentList.innerHTML = '<li class="dash-recent-empty muted small">No muscle selected.</li>';
+    if(focusBtn) focusBtn.disabled = true;
+    return;
+  }
+  const {readiness, last} = fatigueModel(store.sessions, muscle);
+  const color = colorForReadiness(readiness);
+  readinessEl.textContent = `${Math.round(readiness)}%`;
+  readinessEl.style.color = color;
+  lastEl.textContent = last? new Date(last).toLocaleString() : '—';
+  const muscleSessions = store.sessions.filter(s=>s.muscle === muscle).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  countEl.textContent = muscleSessions.length.toString();
+  const hl = store.halfLives[muscle] ?? DEFAULT_HALF_LIVES[muscle] ?? 48;
+  const sr = store.setsToRed[muscle] ?? DEFAULT_SETS_TO_RED[muscle] ?? 10;
+  halfLifeEl.textContent = hl;
+  setsEl.textContent = sr;
+  if(muscleSessions.length){
+    const items = muscleSessions.slice(0,5).map(s=>{
+      const date = new Date(s.ts).toLocaleString();
+      const sets = Number(s.sets) || store.defaultSets;
+      const setsText = `${sets} set${sets===1?'':'s'}`;
+      return `<li><div class="dash-recent-date">${date}</div><div class="muted">${setsText}</div></li>`;
+    });
+    recentList.innerHTML = items.join('');
+  } else {
+    recentList.innerHTML = '<li class="dash-recent-empty muted small">No sessions yet.</li>';
+  }
+  if(focusBtn) focusBtn.disabled = false;
+}function focusDashboard(muscle, opts={}){
+  const dashSel = document.getElementById('dashMuscleSelect');
+  if(!dashSel) return;
+  if(muscle && store.muscles.includes(muscle)){
+    dashSel.value = muscle;
+  }
+  const current = dashSel.value || (store.muscles[0] || '');
+  renderDashboard(current);
+  if(opts.scroll){
+    const dashCard = document.getElementById('dashCard');
+    if(dashCard){
+      dashCard.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }
+}
+
+function focusBodyMap(muscle, opts={}){
+  if(!muscle) return;
+  const frontSvg = document.getElementById('mapFront');
+  const backSvg = document.getElementById('mapBack');
+  const frontMatches = frontSvg ? Array.from(frontSvg.querySelectorAll(`[data-muscle="${muscle}"]`)) : [];
+  const backMatches = backSvg ? Array.from(backSvg.querySelectorAll(`[data-muscle="${muscle}"]`)) : [];
+  if(!frontMatches.length && !backMatches.length) return;
+
+  let targetSide = currentMapSide;
+  if(frontMatches.length && !backMatches.length){
+    targetSide = 'front';
+  } else if(backMatches.length && !frontMatches.length){
+    targetSide = 'back';
+  } else if(targetSide === 'front' && !frontMatches.length){
+    targetSide = 'back';
+  } else if(targetSide === 'back' && !backMatches.length){
+    targetSide = 'front';
+  } else if(targetSide !== 'front' && targetSide !== 'back'){
+    targetSide = frontMatches.length ? 'front' : 'back';
+  }
+
+  if(targetSide !== currentMapSide){
+    setMapSide(targetSide);
+  }
+
+  let targets = targetSide === 'back' ? backMatches : frontMatches;
+
+  if(!targets.length){
+    if(frontMatches.length){
+      if(currentMapSide !== 'front'){
+        setMapSide('front');
+      }
+      targets = frontMatches;
+    } else if(backMatches.length){
+      if(currentMapSide !== 'back'){
+        setMapSide('back');
+      }
+      targets = backMatches;
+    }
+  }
+
+  if(!targets.length) return;
+  const extraDelay = typeof opts.delay === 'number' ? Math.max(0, opts.delay) : 0;
+  setTimeout(()=>{
+    targets.forEach(el=>flash(el));
+  }, 120 + extraDelay);
+}
+
+function parseShape(shape){
+  if(!shape._cache){
+    const nums = shape.points.split(',').map(Number);
+    const attr = [];
+    for(let i=0;i<nums.length;i+=2){
+      const x = nums[i];
+      const y = nums[i+1];
+      if(Number.isFinite(x) && Number.isFinite(y)){
+        attr.push(`${x},${y}`);
+      }
+    }
+    shape._cache = {nums, attr: attr.join(' ')};
+  }
+  return shape._cache;
+}
+
+function getBounds(regions){
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  regions.forEach(region => {
+    region.shapes.forEach(shape => {
+      const {nums} = parseShape(shape);
+      for(let i=0;i<nums.length;i+=2){
+        const x = nums[i];
+        const y = nums[i+1];
+        if(x < minX) minX = x;
+        if(y < minY) minY = y;
+        if(x > maxX) maxX = x;
+        if(y > maxY) maxY = y;
+      }
+    });
+  });
+  if(!Number.isFinite(minX) || !Number.isFinite(minY)){
+    return {minX:0, minY:0, width:1, height:1};
+  }
+  return {minX, minY, width: maxX - minX, height: maxY - minY};
+}
+
+function drawPolygonMap(targetId, key){
+  const svg = document.getElementById(targetId);
+  if(!svg) return;
+  svg.innerHTML = '';
+  const config = MAPS[key];
+  const padding = config.padding || {x:20, y:20};
+  const bounds = MAP_BOUNDS[key] || getBounds(config.regions);
+  const scale = TARGET_MAP_HEIGHT && bounds.height ? (TARGET_MAP_HEIGHT / bounds.height) : 1;
+  const width = bounds.width * scale + padding.x * 2;
+  const height = bounds.height * scale + padding.y * 2;
+
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+
+  const group = document.createElementNS(SVG_NS,'g');
+  group.setAttribute('transform', `translate(${padding.x},${padding.y}) scale(${scale}) translate(${-bounds.minX},${-bounds.minY})`);
+
+  config.regions.forEach(region => {
+    region.shapes.forEach(shape => {
+      const parsed = parseShape(shape);
+      const polygon = document.createElementNS(SVG_NS,'polygon');
+      polygon.setAttribute('points', parsed.attr);
+      polygon.setAttribute('data-muscle', region.muscle);
+      polygon.classList.add('region');
+      polygon.setAttribute('fill','#1a2233');
+      polygon.setAttribute('stroke','#273148');
+      polygon.setAttribute('stroke-width','2');
+      polygon.setAttribute('stroke-linejoin','round');
+      polygon.addEventListener('click', () => {
+        const sessionSel = document.getElementById('muscleSelect');
+        if(sessionSel) sessionSel.value = region.muscle;
+        focusDashboard(region.muscle, {scroll:true});
+        flash(polygon);
+      });
+      const title = document.createElementNS(SVG_NS,'title');
+      title.textContent = shape.label || region.muscle;
+      polygon.appendChild(title);
+      group.appendChild(polygon);
+    });
+  });
+
+  svg.appendChild(group);
+}
+
+function drawFrontMap(){
+  drawPolygonMap('mapFront','front');
+}
+
+function drawBackMap(){
+  drawPolygonMap('mapBack','back');
+}
+
+function updateMapColors(){
+      ['mapFront','mapBack'].forEach(id=>{
+        const svg = document.getElementById(id);
+        svg.querySelectorAll('.region').forEach(el=>{
+          const m = el.getAttribute('data-muscle');
+          const {readiness} = fatigueModel(store.sessions, m);
+          el.setAttribute('fill', colorForReadiness(readiness));
+          el.setAttribute('stroke', '#273148');
+        })
+      })
+    }
+    function flash(el){
+      if(!el) return;
+      if(el._flashTimeout){
+        clearTimeout(el._flashTimeout);
+      }
+      const highlightColor = getCSS('--text') || '#e7ecf3';
+      const previousFilter = el.style.filter || '';
+      el.setAttribute('fill', highlightColor);
+      el.style.filter = 'drop-shadow(0 0 12px rgba(231,236,243,0.6))';
+      el._flashTimeout = setTimeout(()=>{
+        const muscle = el.getAttribute('data-muscle');
+        if(muscle){
+          const {readiness} = fatigueModel(store.sessions, muscle);
+          el.setAttribute('fill', colorForReadiness(readiness));
+        }
+        el.style.filter = previousFilter;
+        el._flashTimeout = null;
+      }, 420);
+    }
+
+    function hydrate(preferredMuscle){
+      // Inputs
+      const sel = document.getElementById('muscleSelect');
+      sel.innerHTML = store.muscles.map(m=>`<option>${m}</option>`).join('');
+      const resetSel = document.getElementById('resetMuscleSelect');
+      if(resetSel){
+        const previous = resetSel.value;
+        resetSel.innerHTML = store.muscles.map(m=>`<option>${m}</option>`).join('');
+        resetSel.disabled = store.muscles.length === 0;
+        if(store.muscles.includes(previous)) resetSel.value = previous;
+      }
+      const resetBtn = document.getElementById('resetMuscleBtn');
+      if(resetBtn){
+        resetBtn.disabled = store.muscles.length === 0;
+      }
+
+      syncEditingStateWithMuscles();
+      buildRecoveryForm(preferredMuscle);
+
+      // Dashboard
+      const dashSel = document.getElementById('dashMuscleSelect');
+      let dashActive = '';
+      if(dashSel){
+        const prior = preferredMuscle && store.muscles.includes(preferredMuscle) ? preferredMuscle : dashSel.value;
+        dashSel.innerHTML = store.muscles.map(m=>`<option>${m}</option>`).join('');
+        if(store.muscles.length){
+          dashActive = store.muscles.includes(prior) ? prior : store.muscles[0];
+          dashSel.value = dashActive;
+          dashSel.disabled = false;
+        } else {
+          dashSel.value = '';
+          dashActive = '';
+          dashSel.disabled = true;
+        }
+      }
+      renderDashboard(dashActive);
+
+      // History
+      const historySel = document.getElementById('histDateSelect');
+      const histList = document.getElementById('histList');
+      const histBtn = document.getElementById('histClearBtn');
+      const sorted = [...store.sessions].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+      document.getElementById('count').textContent = sorted.length+ ' entries';
+      const dates = [...new Set(sorted.map(s=>new Date(s.ts).toISOString().slice(0,10)))];
+      let activeDate = '';
+      if(historySel){
+        const previous = historySel.value;
+        historySel.innerHTML = dates.map(d=>`<option value="${d}">${new Date(d).toLocaleDateString()}</option>`).join('');
+        if(dates.length){
+          activeDate = dates.includes(previous) ? previous : dates[0];
+          historySel.value = activeDate;
+          historySel.disabled = false;
+        }else{
+          historySel.value = '';
+          activeDate = '';
+          historySel.disabled = true;
+        }
+      }
+      const renderHistoryList = (date)=>{
+        if(!histList) return;
+        histList.innerHTML = '';
+        if(!date){
+          histList.innerHTML = '<li class="hist-empty">No sessions logged yet.</li>';
+          if(histBtn) histBtn.disabled = true;
+          return;
+        }
+        const daySessions = sorted.filter(s=>new Date(s.ts).toISOString().slice(0,10)===date);
+        if(!daySessions.length){
+          histList.innerHTML = '<li class="hist-empty">No sessions on this date.</li>';
+          if(histBtn) histBtn.disabled = true;
+          return;
+        }
+        const items = daySessions.map(s=>{
+          const time = new Date(s.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const sets = Number(s.sets) || store.defaultSets;
+          const sessionIndex = store.sessions.indexOf(s);
+          const setsLabel = `${sets} set${sets===1?'':'s'}`;
+          const ariaText = sessionIndex > -1 ? `Remove ${setsLabel} for ${s.muscle} at ${time}` : `Remove ${setsLabel} for ${s.muscle}`;
+          const ariaRemove = ariaText.replace(/"/g, '&quot;');
+          const indexAttr = sessionIndex > -1 ? ` data-session-index="${sessionIndex}"` : '';
+          return `<li${indexAttr}><header><span class="hist-time">${time}</span><div class="hist-muscle-group"><span>${s.muscle}</span><button type="button" class="hist-remove-btn" data-index="${sessionIndex}" aria-label="${ariaRemove}">Remove</button></div></header><div class="muted">${setsLabel}</div></li>`;
+        });
+        histList.innerHTML = items.join('');
+        histList.querySelectorAll('.hist-remove-btn').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const idx = Number(btn.dataset.index);
+            if(Number.isNaN(idx) || idx < 0) return;
+            const session = store.sessions[idx];
+            if(!session) return;
+            const sessionDate = new Date(session.ts);
+            const validSessionDate = !Number.isNaN(sessionDate.getTime());
+            const timeLabel = validSessionDate ? sessionDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+            const dateLabel = validSessionDate ? sessionDate.toLocaleDateString() : '';
+            const setsCount = Number(session.sets) || store.defaultSets;
+            const setsLabel = `${setsCount} set${setsCount===1?'':'s'}`;
+            const [removedSession] = store.sessions.splice(idx,1);
+            if(!removedSession) return;
+            store.save();
+            hydrate(removedSession.muscle);
+            const removalMessage = `${setsLabel} removed for ${removedSession.muscle}${timeLabel ? ` (${dateLabel} ${timeLabel})` : ''}`;
+            showToast({
+              title:'Session removed',
+              message:removalMessage,
+              tone:'success',
+              action:{
+                label:'Restore',
+                onClick: ()=>{
+                  const reinsertionIndex = Math.min(idx, store.sessions.length);
+                  store.sessions.splice(reinsertionIndex, 0, removedSession);
+                  store.save();
+                  hydrate(removedSession.muscle);
+                  showToast({title:'Session restored', message:`Restored ${setsLabel} for ${removedSession.muscle}`, tone:'success'});
+                }
+              }
+            });
+          });
+        });
+        if(histBtn) histBtn.disabled = false;
+      };
+      renderHistoryList(activeDate);
+      if(historySel){
+        if(historySel._mrtChange){
+          historySel.removeEventListener('change', historySel._mrtChange);
+        }
+        const handler = (e)=>{ renderHistoryList(e.target.value); };
+        historySel.addEventListener('change', handler);
+        historySel._mrtChange = handler;
+      }
+      if(histBtn){
+        if(histBtn._mrtClick){
+          histBtn.removeEventListener('click', histBtn._mrtClick);
+        }
+        const clickHandler = ()=>{
+          const date = historySel ? historySel.value : '';
+          if(!date) return;
+          if(!confirm(`Delete all sessions logged on ${new Date(date).toLocaleDateString()}?`)) return;
+          const before = store.sessions.length;
+          store.sessions = store.sessions.filter(s=>new Date(s.ts).toISOString().slice(0,10)!==date);
+          const removed = before - store.sessions.length;
+          if(removed <= 0){
+            alert('No sessions to remove.');
+            return;
+          }
+          store.save();
+          hydrate(date);
+          alert(`Deleted ${removed} session${removed === 1 ? '' : 's'} from ${new Date(date).toLocaleDateString()}.`);
+        };
+        histBtn.addEventListener('click', clickHandler);
+        histBtn._mrtClick = clickHandler;
+      }
+
+      // Defaults for new entry
+      if(!document.getElementById('dt').value){
+        const now = new Date();
+        now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+        document.getElementById('dt').value = now.toISOString().slice(0,16);
+      }
+
+      // Draw / update map
+      drawFrontMap();
+      drawBackMap();
+      updateMapColors();
+      applyMapSide();
+    }
+
+    document.getElementById('swapMap').addEventListener('click', ()=>{
+      setMapSide(currentMapSide === 'front' ? 'back' : 'front');
+    });
+    document.getElementById('dashMuscleSelect').addEventListener('change', (e)=>{
+      focusDashboard(e.target.value);
+    });
+    document.getElementById('dashFocusBtn').addEventListener('click', ()=>{
+      const muscle = document.getElementById('dashMuscleSelect').value;
+      if(!muscle) return;
+      let delay = 0;
+      const mapCard = document.getElementById('mapCard');
+      if(mapCard){
+        const prefersReduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        delay = prefersReduce ? 0 : 420;
+        mapCard.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+      focusBodyMap(muscle, {delay});
+    });
+    document.getElementById('settingsMuscle').addEventListener('change', (e)=>{
+      setRecoveryInputs(e.target.value);
+    });
+    document.getElementById('settingsHalfLife').addEventListener('input', (e)=>{
+      const muscle = document.getElementById('settingsMuscle').value;
+      if(!muscle) return;
+      editingState.halfLives[muscle] = e.target.value;
+    });
+    document.getElementById('settingsSetsToRed').addEventListener('input', (e)=>{
+      const muscle = document.getElementById('settingsMuscle').value;
+      if(!muscle) return;
+      editingState.setsToRed[muscle] = e.target.value;
+    });
+    const halfLifeInfoBtn = document.getElementById('halfLifeInfoBtn');
+    const halfLifeModal = document.getElementById('halfLifeModal');
+    const halfLifeModalCard = document.getElementById('halfLifeModalCard');
+    const halfLifeModalClose = document.getElementById('halfLifeModalClose');
+    let halfLifeReturnFocus = null;
+    const openHalfLifeModal = ()=>{
+      if(!halfLifeModal) return;
+      halfLifeReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      halfLifeModal.classList.add('show');
+      halfLifeModal.setAttribute('aria-hidden','false');
+      if(halfLifeInfoBtn){
+        halfLifeInfoBtn.setAttribute('aria-expanded','true');
+      }
+      const focusTarget = halfLifeModalClose || halfLifeModalCard || halfLifeModal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if(focusTarget instanceof HTMLElement){
+        focusTarget.focus();
+      } else {
+        halfLifeModal.focus();
+      }
+    };
+    const closeHalfLifeModal = ()=>{
+      if(!halfLifeModal) return;
+      halfLifeModal.classList.remove('show');
+      halfLifeModal.setAttribute('aria-hidden','true');
+      if(halfLifeInfoBtn){
+        halfLifeInfoBtn.setAttribute('aria-expanded','false');
+      }
+      if(halfLifeReturnFocus instanceof HTMLElement){
+        halfLifeReturnFocus.focus();
+      }
+    };
+    if(halfLifeInfoBtn && halfLifeModal){
+      halfLifeInfoBtn.addEventListener('click', (event)=>{
+        event.preventDefault();
+        openHalfLifeModal();
+      });
+      if(halfLifeModalClose){
+        halfLifeModalClose.addEventListener('click', closeHalfLifeModal);
+      }
+      halfLifeModal.addEventListener('click', (event)=>{
+        if(event.target === halfLifeModal){
+          closeHalfLifeModal();
+        }
+      });
+      document.addEventListener('keydown', (event)=>{
+        if(event.key === 'Escape' && halfLifeModal.classList.contains('show')){
+          closeHalfLifeModal();
+        }
+      });
+    }
+
+    store.load();
+    hydrate();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
